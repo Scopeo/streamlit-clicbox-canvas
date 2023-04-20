@@ -100,7 +100,7 @@ elif "label_folder_path" in st.session_state:
     image, image_file_name, bounding_boxes = handle_image_and_bounding_box(current_file, images_path, bounding_boxes)
     st.write(
         f'Files done : {len(st.session_state.get("curation_output_files", []))}, files left : {len(st.session_state.get("OCR_output_files", []))}')
-
+    
     canvas_result = st_canvas(
         background_image=image,
         display_toolbar=False,

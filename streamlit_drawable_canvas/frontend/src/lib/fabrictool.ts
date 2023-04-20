@@ -26,5 +26,4 @@ abstract class FabricTool {
    */
   abstract configureCanvas(args: ConfigureCanvasProps): () => void
 }
-
 export default FabricTool
