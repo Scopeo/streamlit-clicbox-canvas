@@ -66,6 +66,9 @@ if "output_folder_path" not in st.session_state:
 if "curation_output_files" not in st.session_state:
     st.session_state["curation_output_files"] = list()
 
+if "refresh_counter" not in st.session_state:
+    st.session_state["refresh_counter"] = 0
+
 if not st.session_state["initialized"]:
 
     st.markdown(
@@ -94,12 +97,15 @@ elif "label_folder_path" in st.session_state:
     current_file = st.session_state["OCR_output_files"][0]
     with open(os.path.join(st.session_state["label_folder_path"], current_file), "r") as file:
         bounding_boxes = json.load(file)
-    if len(bounding_boxes) > 0 and bounding_boxes[0]["user_reviewed"] == 1 and not st.session_state["previous_clicked"]:
+    if len(bounding_boxes["objects"]) > 0 and bounding_boxes["user_reviewed"] == 1 and not st.session_state["previous_clicked"]:
         next_page()
 
     image, image_file_name, bounding_boxes = handle_image_and_bounding_box(current_file, images_path, bounding_boxes)
     st.write(
-        f'Files done : {len(st.session_state.get("curation_output_files", []))}, files left : {len(st.session_state.get("OCR_output_files", []))}')
+        f'##### Files done : {len(st.session_state.get("curation_output_files", []))}, files left : {len(st.session_state.get("OCR_output_files", []))}')
+
+    if st.button("Refresh image"):
+        st.session_state["refresh_counter"] += 1
 
     canvas_result = st_canvas(
         background_image=image,
@@ -108,8 +114,8 @@ elif "label_folder_path" in st.session_state:
         height=image.size[1],
         width=image.size[0],
         drawing_mode="transform",
-        key=image_file_name,
-        initial_drawing={"objects": bounding_boxes},
+        key=f"{image_file_name}_{st.session_state['refresh_counter']}",
+        initial_drawing=bounding_boxes,
     )
     st.write(image_file_name)
     st.write("")
@@ -129,15 +135,15 @@ elif "label_folder_path" in st.session_state:
     st.write("")
     st.write("")
 
-    col3, col4 = st.columns([8, 1])
+    col1, col2 = st.columns([8, 1])
     if len(st.session_state.get("curation_output_files", [])) > 0:
-        if col3.button("Previous"):
+        if col1.button("Previous"):
             previous_page()
-    if col4.button("Next"):
+    if col2.button("Next"):
         next_page()
 
     if canvas_result.json_data is not None:
-        any_green_box, bounding_boxes = handle_user_choice(bounding_boxes, canvas_result.json_data["objects"])
-        if any_green_box:
+        any_dark_green_box, bounding_boxes = handle_user_choice(bounding_boxes, canvas_result.json_data["objects"])
+        if any_dark_green_box:
             save_current_state(current_file, bounding_boxes, st.session_state["label_folder_path"])
             next_page()
