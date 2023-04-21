@@ -58,7 +58,9 @@ def save_current_state(file_name, bounding_boxes, label_folder_path):
 
     for idx, _ in enumerate(saved_data["objects"]):
         saved_data["objects"][idx]["result"] = bounding_boxes["objects"][idx].get("result", True)
-
+        saved_data["objects"][idx]["first"] = bounding_boxes["objects"][idx].get("first", True)
+        saved_data["objects"][idx]["last"] = bounding_boxes["objects"][idx].get("last", True)
+        
     with open(os.path.join(label_folder_path, file_name), "w") as json_file:
         json.dump(saved_data, json_file, indent=2)
 
@@ -87,11 +89,25 @@ def handle_user_choice(data, canvas_bounding_boxes):
         ocr_bounding_box = data["objects"][i]
         if canvas_bounding_box["fill"] == "rgb(208, 240, 192, 0.2)":
             ocr_bounding_box["result"] = True
+            ocr_bounding_box["first"] = True
+            ocr_bounding_box["last"] = True
+        elif canvas_bounding_box["fill"] == "rgb(208, 237, 192, 0.2)":
+            ocr_bounding_box["first"] = True
+            ocr_bounding_box["result"] = True
+        elif canvas_bounding_box["fill"] == "rgb(208, 238, 192, 0.2)":
+            ocr_bounding_box["result"] = True
+        elif canvas_bounding_box["fill"] == "rgb(208, 239, 192, 0.2)":
+            any_dark_green_box = True
+            ocr_bounding_box["last"] = True
         elif canvas_bounding_box["fill"] == "rgb(1, 50, 32, 0.2)":
             any_dark_green_box = True
             ocr_bounding_box["result"] = True
+            ocr_bounding_box["first"] = True
+            ocr_bounding_box["last"] = True
         else:
             ocr_bounding_box["result"] = False
+            ocr_bounding_box["first"] = False
+            ocr_bounding_box["last"] = False
         ocr_bounding_box.update(canvas_bounding_box)
     if any_dark_green_box:
         data["user_reviewed"] = 1

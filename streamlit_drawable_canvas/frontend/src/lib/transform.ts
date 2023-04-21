@@ -33,11 +33,28 @@ class TransformTool extends FabricTool {
         handleRightClick()
       }
     }
-    canvas.on('mouse:down', handleMouseDown)
+     const handleSelection = () => {
+      const selectedObjects = canvas.getActiveObjects();
+      if (selectedObjects.length > 0) {
+        selectedObjects.forEach(function (arrayItem) {
+          if (arrayItem.selectable) {
+            arrayItem.set({ fill: 'rgb(208, 238, 192, 0.2)', stroke: 'rgb(50,205,50)'});
+          }
+        })
+        selectedObjects[0].set({ fill: 'rgb(208, 237, 192, 0.2)', stroke: 'rgb(50,205,50)'})
+        selectedObjects[selectedObjects.length -1].set({ fill: 'rgb(208, 239, 192, 0.2)', stroke: 'rgb(50,205,50)'})
+      canvas.renderAll()
+      }
+    }
+    canvas.on({'mouse:down': handleMouseDown, 'selection:created': handleSelection})
     return () => {
-      canvas.off('mouse:down', handleMouseDown)
+      canvas.off({'mouse:down': handleMouseDown, 'selection:created': handleSelection})
     }
   }
 }
 
 export default TransformTool
+
+
+
+
