@@ -58,7 +58,9 @@ def save_current_state(file_name, bounding_boxes, label_folder_path):
 
     for idx, _ in enumerate(saved_data["objects"]):
         saved_data["objects"][idx]["result"] = bounding_boxes["objects"][idx].get("result", True)
-
+        saved_data["objects"][idx]["first"] = bounding_boxes["objects"][idx].get("first", True)
+        saved_data["objects"][idx]["last"] = bounding_boxes["objects"][idx].get("last", True)
+        
     with open(os.path.join(label_folder_path, file_name), "w") as json_file:
         json.dump(saved_data, json_file, indent=2)
 
