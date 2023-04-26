@@ -52,12 +52,12 @@ class TransformTool extends FabricTool {
         })
         selectedObjects[0].set({ fill: color_click, stroke: 'rgb(50,199,50)'})
         selectedObjects[selectedObjects.length -1].set({ fill: color_click, stroke: 'rgb(50,201,50)'})
-        canvas.setActiveObject(selectedObjects[0])
-      canvas.renderAll()
       }
       if (selectedObjects.length === 1) {
         selectedObjects[0].set({ fill: color_click, stroke: 'rgb(50,205,50)'})
       }
+      canvas.setActiveObject(selectedObjects[0])
+      canvas.renderAll()
     }
     canvas.on({'mouse:down': handleMouseDown, 'selection:created': handleSelection})
     return () => {
