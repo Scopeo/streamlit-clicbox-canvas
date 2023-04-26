@@ -46,10 +46,10 @@ def handle_image_and_bounding_box(OCR_results_file, images_path, bounding_boxes)
     return image, image_file_name, bounding_boxes
 
 
-st.markdown(
-    "<h1 style='text-align: center;'>Invoice Data Collection Application</h1>",
-    unsafe_allow_html=True
-)
+def add_empty_space(n):
+    for _ in range(n):
+        st.write("")
+
 
 if "selected_label" not in st.session_state:
     st.session_state["selected_label"] = ""
@@ -81,7 +81,9 @@ if not st.session_state["initialized"]:
     if st.session_state["selected_label"] != label:
         st.session_state["selected_label"] = label
         st.session_state["label_folder_path"] = os.path.join(OCR_results_path, label)
-        st.session_state["OCR_output_files"] = [file for file in os.listdir(os.path.join(OCR_results_path, label)) if file.endswith(".json")]
+        list_files = [file for file in os.listdir(os.path.join(OCR_results_path, label)) if file.endswith(".json")]
+        list_files.sort()
+        st.session_state["OCR_output_files"] = list_files
         st.session_state["output_folder_path"] = os.path.join(output_path, label)
         os.makedirs(st.session_state["output_folder_path"], exist_ok=True)
         st.session_state["curation_output_files"] = [file for file in os.listdir(st.session_state["output_folder_path"]) if file.endswith(".json")]
@@ -100,47 +102,62 @@ elif "label_folder_path" in st.session_state:
     if len(bounding_boxes["objects"]) > 0 and bounding_boxes["user_reviewed"] == 1 and not st.session_state["previous_clicked"]:
         next_page()
 
-    image, image_file_name, bounding_boxes = handle_image_and_bounding_box(current_file, images_path, bounding_boxes)
-    st.write(
-        f'##### Files done : {len(st.session_state.get("curation_output_files", []))}, files left : {len(st.session_state.get("OCR_output_files", []))}')
+    st.set_page_config(layout="wide")
+    empty_col1, image_col, button_col, empty_col2 = st.columns([3, 6, 5, 3])
 
-    if st.button("Refresh image"):
-        st.session_state["refresh_counter"] += 1
+    with image_col:
+        image, image_file_name, bounding_boxes = handle_image_and_bounding_box(current_file, images_path, bounding_boxes)
 
-    canvas_result = st_canvas(
-        background_image=image,
-        display_toolbar=False,
-        update_streamlit=True,
-        height=image.size[1],
-        width=image.size[0],
-        drawing_mode="transform",
-        key=f"{image_file_name}_{st.session_state['refresh_counter']}",
-        initial_drawing=bounding_boxes,
-    )
-    st.write(image_file_name)
-    st.write("")
-    st.write("")
+        canvas_result = st_canvas(
+            background_image=image,
+            display_toolbar=False,
+            update_streamlit=True,
+            height=image.size[1],
+            width=image.size[0],
+            drawing_mode="transform",
+            key=f"{image_file_name}_{st.session_state['refresh_counter']}",
+            initial_drawing=bounding_boxes,
+        )
+        st.write(image_file_name)
 
-    cols = st.columns([2, 1, 2])
-    with cols[1]:
-        if st.button("Wrong data point"):
+    with button_col:
+
+        st.markdown(
+            "<h1 style='text-align: center; '>Invoice Data Collection Application</h1>",
+            unsafe_allow_html=True
+        )
+
+        st.markdown(
+            f"<h5 style='text-align: center;'> Files done : {len(st.session_state.get('curation_output_files', []))}, files left : {len(st.session_state.get('OCR_output_files', []))}</h5>",
+            unsafe_allow_html=True
+        )
+        add_empty_space(1)
+        st.markdown(f"<h8 style='text-align:'>Selected Label: {st.session_state['selected_label']}</h8>",
+                    unsafe_allow_html=True)
+
+        add_empty_space(2)
+        col1, col2 = st.columns([6, 1])
+        if col1.button("Refresh image"):
+            st.session_state["refresh_counter"] += 1
+
+        add_empty_space(5)
+        col3, col4 = st.columns([6, 1])
+
+        if col3.button("Wrong data point"):
             save_current_state(current_file, handle_wrong_datapoint(bounding_boxes), st.session_state["label_folder_path"])
             next_page()
 
-    with cols[1]:
-        if st.button("Missing information"):
+        if col3.button("Missing information"):
             save_current_state(current_file, handle_missing_datapoint(bounding_boxes), st.session_state["label_folder_path"])
             next_page()
 
-    st.write("")
-    st.write("")
-
-    col1, col2 = st.columns([8, 1])
-    if len(st.session_state.get("curation_output_files", [])) > 0:
-        if col1.button("Previous"):
-            previous_page()
-    if col2.button("Next"):
-        next_page()
+        add_empty_space(5)
+        col5, col6 = st.columns([6, 1])
+        if len(st.session_state.get("curation_output_files", [])) > 0:
+            if col5.button("Previous"):
+                previous_page()
+        if col6.button("Next"):
+            next_page()
 
     if canvas_result.json_data is not None:
         any_dark_green_box, bounding_boxes = handle_user_choice(bounding_boxes, canvas_result.json_data["objects"])

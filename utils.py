@@ -7,7 +7,7 @@ import shutil
 
 def get_image_file_name(json_file_name, image_path):
     for image_file_name in os.listdir(image_path):
-        if os.path.splitext(image_file_name)[0] == json_file_name[:-5]:
+        if os.path.splitext(image_file_name)[0] == json_file_name[2:-5]:
             return image_file_name
 
 
@@ -97,7 +97,7 @@ def handle_user_choice(data, canvas_bounding_boxes):
         elif canvas_bounding_box["fill"] == "rgb(208, 238, 192, 0.2)":
             ocr_bounding_box["result"] = True
         elif canvas_bounding_box["fill"] == "rgb(208, 239, 192, 0.2)":
-            any_dark_green_box = True
+            ocr_bounding_box["result"] = True
             ocr_bounding_box["last"] = True
         elif canvas_bounding_box["fill"] == "rgb(1, 50, 32, 0.2)":
             any_dark_green_box = True

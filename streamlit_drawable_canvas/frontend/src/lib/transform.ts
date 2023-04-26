@@ -5,20 +5,20 @@ class TransformTool extends FabricTool {
     let canvas = this._canvas
     canvas.isDrawingMode = false
     canvas.selection = true
-    canvas.forEachObject((o) => (o.selectable = o.evented = o.lockMovementX = o.lockMovementY =true))
+    canvas.forEachObject((o) => (o.selectable = o.evented =true))
     canvas.forEachObject((o) => (o.hasControls =false))
 
     const handleLeftClick = () => {
       const activeObject = canvas.getActiveObject()
       if (activeObject && activeObject.selectable) {
-        activeObject.set({fill: 'rgb(1, 50, 32, 0.2)', stroke: 'rgb(50,205,50)'})
+        activeObject.set({fill: 'rgb(1, 50, 32, 0.2)', stroke: 'rgb(50,205,50)', lockMovementX: true, lockMovementY: true})
         canvas.renderAll()
       }
     }
     const handleRightClick = () => {
       const activeObject = canvas.getActiveObject()
       if (activeObject && activeObject.selectable) {
-        activeObject.set({ fill: 'rgb(208, 240, 192, 0.2)', stroke: 'rgb(50,205,50)'})
+        activeObject.set({ fill: 'rgb(208, 240, 192, 0.2)', stroke: 'rgb(50,205,50)', lockMovementX: true, lockMovementY: true})
         canvas.renderAll()
       }
     }
@@ -43,6 +43,7 @@ class TransformTool extends FabricTool {
         })
         selectedObjects[0].set({ fill: 'rgb(208, 237, 192, 0.2)', stroke: 'rgb(50,205,50)'})
         selectedObjects[selectedObjects.length -1].set({ fill: 'rgb(208, 239, 192, 0.2)', stroke: 'rgb(50,205,50)'})
+        canvas.setActiveObject(selectedObjects[0])
       canvas.renderAll()
       }
     }
