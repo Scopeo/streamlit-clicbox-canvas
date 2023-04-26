@@ -89,25 +89,23 @@ def handle_user_choice(data, canvas_bounding_boxes):
         ocr_bounding_box = data["objects"][i]
         if canvas_bounding_box["fill"] == "rgb(208, 240, 192, 0.2)":
             ocr_bounding_box["result"] = True
-            ocr_bounding_box["first"] = True
-            ocr_bounding_box["last"] = True
-        elif canvas_bounding_box["fill"] == "rgb(208, 237, 192, 0.2)":
-            ocr_bounding_box["first"] = True
-            ocr_bounding_box["result"] = True
-        elif canvas_bounding_box["fill"] == "rgb(208, 238, 192, 0.2)":
-            ocr_bounding_box["result"] = True
         elif canvas_bounding_box["fill"] == "rgb(208, 239, 192, 0.2)":
             ocr_bounding_box["result"] = True
-            ocr_bounding_box["last"] = True
-        elif canvas_bounding_box["fill"] == "rgb(1, 50, 32, 0.2)":
             any_dark_green_box = True
-            ocr_bounding_box["result"] = True
+        else:
+            ocr_bounding_box["result"] = False
+
+        if canvas_bounding_box["stroke"] == 'rgb(50,199,50)':
+            ocr_bounding_box["first"] = True
+        elif canvas_bounding_box["stroke"] == "rgb(50,201,50)":
+            ocr_bounding_box["last"] = True
+        elif canvas_bounding_box["stroke"] == "rgb(50,205,50)":
             ocr_bounding_box["first"] = True
             ocr_bounding_box["last"] = True
         else:
-            ocr_bounding_box["result"] = False
             ocr_bounding_box["first"] = False
             ocr_bounding_box["last"] = False
+
         ocr_bounding_box.update(canvas_bounding_box)
     if any_dark_green_box:
         data["user_reviewed"] = 1

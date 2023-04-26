@@ -50,6 +50,12 @@ def add_empty_space(n):
     for _ in range(n):
         st.write("")
 
+def hide_anchor_link():
+    st.markdown("""
+        <style>
+        .css-15zrgzn {display: none}
+        </style>
+        """, unsafe_allow_html=True)
 
 if "selected_label" not in st.session_state:
     st.session_state["selected_label"] = ""
@@ -70,7 +76,7 @@ if "refresh_counter" not in st.session_state:
     st.session_state["refresh_counter"] = 0
 
 if not st.session_state["initialized"]:
-
+    hide_anchor_link()
     st.markdown(
         "<h1 style='text-align: center;'>Let's start</h1>",
         unsafe_allow_html=True
@@ -93,6 +99,7 @@ if not st.session_state["initialized"]:
         st.experimental_rerun()
 
 elif len(st.session_state["OCR_output_files"]) == 0:
+    hide_anchor_link()
     st.markdown("<h1 style='text-align: center;'>You're done!</h1>", unsafe_allow_html=True)
 
 elif "label_folder_path" in st.session_state:
@@ -103,6 +110,7 @@ elif "label_folder_path" in st.session_state:
         next_page()
 
     st.set_page_config(layout="wide")
+    hide_anchor_link()
     empty_col1, image_col, button_col, empty_col2 = st.columns([3, 6, 5, 3])
 
     with image_col:
@@ -123,7 +131,7 @@ elif "label_folder_path" in st.session_state:
     with button_col:
 
         st.markdown(
-            "<h1 style='text-align: center; '>Invoice Data Collection Application</h1>",
+            """<h1 style='text-align: center; '>Invoice Data Collection Application</h1>""",
             unsafe_allow_html=True
         )
 
