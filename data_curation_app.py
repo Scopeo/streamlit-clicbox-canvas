@@ -123,6 +123,7 @@ elif "label_folder_path" in st.session_state:
 
     with button_col:
 
+        # Hide HTML anchors for titles
         st.markdown("""
                 <style>
                 .css-15zrgzn {display: none}
