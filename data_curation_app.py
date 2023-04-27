@@ -50,12 +50,6 @@ def add_empty_space(n):
     for _ in range(n):
         st.write("")
 
-def hide_anchor_link():
-    st.markdown("""
-        <style>
-        .css-15zrgzn {display: none}
-        </style>
-        """, unsafe_allow_html=True)
 
 if "selected_label" not in st.session_state:
     st.session_state["selected_label"] = ""
@@ -76,7 +70,6 @@ if "refresh_counter" not in st.session_state:
     st.session_state["refresh_counter"] = 0
 
 if not st.session_state["initialized"]:
-    hide_anchor_link()
     st.markdown(
         "<h1 style='text-align: center;'>Let's start</h1>",
         unsafe_allow_html=True
@@ -99,7 +92,6 @@ if not st.session_state["initialized"]:
         st.experimental_rerun()
 
 elif len(st.session_state["OCR_output_files"]) == 0:
-    hide_anchor_link()
     st.markdown("<h1 style='text-align: center;'>You're done!</h1>", unsafe_allow_html=True)
 
 elif "label_folder_path" in st.session_state:
@@ -110,11 +102,12 @@ elif "label_folder_path" in st.session_state:
         next_page()
 
     st.set_page_config(layout="wide")
-    hide_anchor_link()
-    empty_col1, image_col, button_col, empty_col2 = st.columns([3, 6, 5, 3])
+    empty_col1, image_col, button_col, empty_col2 = st.columns([2, 7, 6, 2])
 
     with image_col:
         image, image_file_name, bounding_boxes = handle_image_and_bounding_box(current_file, images_path, bounding_boxes)
+        if st.button("Refresh image"):
+            st.session_state["refresh_counter"] += 1
 
         canvas_result = st_canvas(
             background_image=image,
@@ -130,6 +123,15 @@ elif "label_folder_path" in st.session_state:
 
     with button_col:
 
+        # Hide HTML anchors for titles
+        st.markdown("""
+                <style>
+                .css-15zrgzn {display: none}
+                .css-eczf16 {display: none}
+                .css-jn99sy {display: none}
+                </style>
+                """, unsafe_allow_html=True)
+
         st.markdown(
             """<h1 style='text-align: center; '>Invoice Data Collection Application</h1>""",
             unsafe_allow_html=True
@@ -143,10 +145,6 @@ elif "label_folder_path" in st.session_state:
         st.markdown(f"<h8 style='text-align:'>Selected Label: {st.session_state['selected_label']}</h8>",
                     unsafe_allow_html=True)
 
-        add_empty_space(2)
-        col1, col2 = st.columns([6, 1])
-        if col1.button("Refresh image"):
-            st.session_state["refresh_counter"] += 1
 
         add_empty_space(5)
         col3, col4 = st.columns([6, 1])
@@ -160,7 +158,7 @@ elif "label_folder_path" in st.session_state:
             next_page()
 
         add_empty_space(5)
-        col5, col6 = st.columns([6, 1])
+        col5, col6 = st.columns([5, 1])
         if len(st.session_state.get("curation_output_files", [])) > 0:
             if col5.button("Previous"):
                 previous_page()

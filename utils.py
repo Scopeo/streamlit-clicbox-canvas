@@ -2,7 +2,6 @@ from PIL import Image
 import json
 from pdf2image import convert_from_path
 import os
-import shutil
 
 
 def get_image_file_name(json_file_name, image_path):
@@ -97,8 +96,10 @@ def handle_user_choice(data, canvas_bounding_boxes):
 
         if canvas_bounding_box["stroke"] == 'rgb(50,199,50)':
             ocr_bounding_box["first"] = True
+            ocr_bounding_box["last"] = False
         elif canvas_bounding_box["stroke"] == "rgb(50,201,50)":
             ocr_bounding_box["last"] = True
+            ocr_bounding_box["first"] = False
         elif canvas_bounding_box["stroke"] == "rgb(50,205,50)":
             ocr_bounding_box["first"] = True
             ocr_bounding_box["last"] = True
