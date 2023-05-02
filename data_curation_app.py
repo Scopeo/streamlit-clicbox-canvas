@@ -46,9 +46,9 @@ def handle_image_and_bounding_box(OCR_results_file, images_path, bounding_boxes)
     return image, image_file_name, bounding_boxes
 
 
-def add_empty_space(n):
+def add_sidebar_empty_space(n):
     for _ in range(n):
-        st.write("")
+        st.sidebar.markdown("<br>", unsafe_allow_html=True)
 
 
 if "selected_label" not in st.session_state:
@@ -85,7 +85,8 @@ if not st.session_state["initialized"]:
         st.session_state["OCR_output_files"] = list_files
         st.session_state["output_folder_path"] = os.path.join(output_path, label)
         os.makedirs(st.session_state["output_folder_path"], exist_ok=True)
-        st.session_state["curation_output_files"] = [file for file in os.listdir(st.session_state["output_folder_path"]) if file.endswith(".json")]
+        st.session_state["curation_output_files"] = [file for file in os.listdir(st.session_state["output_folder_path"])
+                                                     if file.endswith(".json")]
     col3, col4 = st.columns([8, 1])
     if col4.button("Next"):
         st.session_state["initialized"] = True
@@ -98,72 +99,106 @@ elif "label_folder_path" in st.session_state:
     current_file = st.session_state["OCR_output_files"][0]
     with open(os.path.join(st.session_state["label_folder_path"], current_file), "r") as file:
         bounding_boxes = json.load(file)
-    if len(bounding_boxes["objects"]) > 0 and bounding_boxes["user_reviewed"] == 1 and not st.session_state["previous_clicked"]:
+    if len(bounding_boxes["objects"]) > 0 and bounding_boxes["user_reviewed"] == 1 \
+            and not st.session_state["previous_clicked"]:
         next_page()
 
     st.set_page_config(layout="wide")
-    empty_col1, image_col, button_col, empty_col2 = st.columns([2, 7, 6, 2])
 
-    with image_col:
-        image, image_file_name, bounding_boxes = handle_image_and_bounding_box(current_file, images_path, bounding_boxes)
-        if st.button("Refresh image"):
-            st.session_state["refresh_counter"] += 1
+    # add default width for sidebar
+    st.markdown('''
+            <style>
+                    [data-testid="stSidebar"]{
+                        min-width: 30%;
+                        max-width: 30%
+                    }
+            </style>
+            ''', unsafe_allow_html=True)
 
-        canvas_result = st_canvas(
-            background_image=image,
-            display_toolbar=False,
-            update_streamlit=True,
-            height=image.size[1],
-            width=image.size[0],
-            drawing_mode="transform",
-            key=f"{image_file_name}_{st.session_state['refresh_counter']}",
-            initial_drawing=bounding_boxes,
-        )
-        st.write(image_file_name)
+    # remove whitespaces
+    st.markdown("""
+            <style>
+                   .block-container {
+                        padding-top: 1rem;
+                    }
 
-    with button_col:
+            </style>
+            """, unsafe_allow_html=True)
 
-        # Hide HTML anchors for titles
-        st.markdown("""
-                <style>
-                .css-15zrgzn {display: none}
-                .css-eczf16 {display: none}
-                .css-jn99sy {display: none}
-                </style>
-                """, unsafe_allow_html=True)
+    st.markdown("""
+            <style>
+                   .css-1544g2n {
+                        padding-top: 2rem;
+                    }
 
-        st.markdown(
-            """<h1 style='text-align: center; '>Invoice Data Collection Application</h1>""",
-            unsafe_allow_html=True
-        )
+            </style>
+            """, unsafe_allow_html=True)
 
-        st.markdown(
-            f"<h5 style='text-align: center;'> Files done : {len(st.session_state.get('curation_output_files', []))}, files left : {len(st.session_state.get('OCR_output_files', []))}</h5>",
-            unsafe_allow_html=True
-        )
-        add_empty_space(1)
-        st.markdown(f"<h8 style='text-align:'>Selected Label: {st.session_state['selected_label']}</h8>",
-                    unsafe_allow_html=True)
+    # add company logo
+    image_url = "https://scopeo.ai/wp-content/uploads/2020/11/logo_1024_512.png"
+    st.markdown('''
+            <style>
+                    .disabled-click {
+                        pointer-events: none;
+                    }
+            </style>
+            ''', unsafe_allow_html=True)
+    st.sidebar.markdown(
+        f'<img src="{image_url}" class="disabled-click" width="100">', unsafe_allow_html=True
+    )
 
+    st.sidebar.markdown(
+        """<h1 style='text-align: center; '>Invoice Data Collection Application</h1>""",
+        unsafe_allow_html=True
+    )
 
-        add_empty_space(5)
-        col3, col4 = st.columns([6, 1])
+    st.sidebar.markdown(
+        f"<h4 style='text-align: center;'> Files done : {len(st.session_state.get('curation_output_files', []))}, "
+        f"files left : {len(st.session_state.get('OCR_output_files', []))}</h4>",
+        unsafe_allow_html=True
+    )
 
-        if col3.button("Wrong data point"):
-            save_current_state(current_file, handle_wrong_datapoint(bounding_boxes), st.session_state["label_folder_path"])
-            next_page()
+    add_sidebar_empty_space(1)
 
-        if col3.button("Missing information"):
-            save_current_state(current_file, handle_missing_datapoint(bounding_boxes), st.session_state["label_folder_path"])
-            next_page()
+    st.sidebar.markdown(f"<h5 style='text-align:'>Selected Label: {st.session_state['selected_label']}</h5>",
+                        unsafe_allow_html=True)
 
-        add_empty_space(5)
-        col5, col6 = st.columns([5, 1])
-        if len(st.session_state.get("curation_output_files", [])) > 0:
-            if col5.button("Previous"):
-                previous_page()
-        if col6.button("Next"):
-            next_page()
+    image, image_file_name, bounding_boxes = handle_image_and_bounding_box(current_file, images_path, bounding_boxes)
+
+    col1, col2 = st.sidebar.columns([2, 5])
+    if col1.button("Refresh image"):
+        st.session_state["refresh_counter"] += 1
+
+    canvas_result = st_canvas(
+        background_image=image,
+        display_toolbar=False,
+        update_streamlit=True,
+        height=image.size[1],
+        width=image.size[0],
+        drawing_mode="transform",
+        key=f"{image_file_name}_{st.session_state['refresh_counter']}",
+        initial_drawing=bounding_boxes,
+    )
+    st.write(image_file_name)
+
+    add_sidebar_empty_space(5)
+    col3, col4 = st.sidebar.columns([2, 5])
+
+    if col4.button("Wrong data point"):
+        save_current_state(current_file, handle_wrong_datapoint(bounding_boxes), st.session_state["label_folder_path"])
+        next_page()
+
+    if col4.button("Missing information"):
+        save_current_state(current_file, handle_missing_datapoint(bounding_boxes), st.session_state["label_folder_path"])
+        next_page()
+
+    add_sidebar_empty_space(5)
+    col5, col6 = st.sidebar.columns([5, 1])
+    if len(st.session_state.get("curation_output_files", [])) > 0:
+        if col5.button("Previous"):
+            previous_page()
+    if col6.button("Next"):
+        next_page()
 
     if canvas_result.json_data is not None:
         any_dark_green_box, bounding_boxes = handle_user_choice(bounding_boxes, canvas_result.json_data["objects"])
