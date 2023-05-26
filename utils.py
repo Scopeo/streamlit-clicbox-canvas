@@ -1,27 +1,3 @@
-from PIL import Image
-import json
-from pdf2image import convert_from_path
-import os
-
-
-def get_image_file_name(json_file_name, image_path):
-    for image_file_name in os.listdir(image_path):
-        if os.path.splitext(image_file_name)[0] == json_file_name[2:-5]:
-            return image_file_name
-
-
-# TODO handle multiple pages of pdf
-def read_document(file_name, image_path):
-    file_extension = os.path.splitext(file_name)[-1].lower()
-    if file_extension in ['.jpg', '.jpeg', '.png', '.heic', '.bmp', '.gif', '.tiff', '.tif', '.webp', '.heif']:
-        image = Image.open(os.path.join(image_path, file_name))
-    elif file_extension == '.pdf':
-        image = convert_from_path(os.path.join(image_path, file_name))[0]
-    else:
-        raise ValueError(f"Unsupported file format: {file_extension}")
-    return image
-
-
 def resize_image(image, max_width, max_height):
     aspect_ratio = float(image.size[1]) / float(image.size[0])
     new_width = max_width
@@ -47,21 +23,20 @@ def scale_bounding_box(bounding_boxes, width_scale, height_scale):
     return bounding_boxes
 
 
-def save_current_state(file_name, bounding_boxes, label_folder_path):
+def save_current_state(file_name, bounding_boxes, bucket, client):
+    obj = client.get_object(Bucket=bucket, Key=file_name)
+    saved_data = json.loads(obj['Body'].read().decode('utf-8'))
 
-    with open(os.path.join(label_folder_path, file_name), "r") as json_file:
-        saved_data = json.load(json_file)
-        saved_data["user_reviewed"] = bounding_boxes.get("user_reviewed", 0)
-        saved_data["missing_information"] = bounding_boxes.get("missing_information", False)
-        saved_data["wrong_datapoint"] = bounding_boxes.get("wrong_datapoint", False)
+    saved_data["user_reviewed"] = bounding_boxes.get("user_reviewed", 0)
+    saved_data["missing_information"] = bounding_boxes.get("missing_information", False)
+    saved_data["wrong_datapoint"] = bounding_boxes.get("wrong_datapoint", False)
 
     for idx, _ in enumerate(saved_data["objects"]):
         saved_data["objects"][idx]["result"] = bounding_boxes["objects"][idx].get("result", True)
         saved_data["objects"][idx]["first"] = bounding_boxes["objects"][idx].get("first", True)
         saved_data["objects"][idx]["last"] = bounding_boxes["objects"][idx].get("last", True)
-        
-    with open(os.path.join(label_folder_path, file_name), "w") as json_file:
-        json.dump(saved_data, json_file, indent=2)
+
+    client.put_object(Bucket=bucket, Key=file_name, Body=json.dumps(saved_data, indent=2).encode('utf-8'))
 
 
 def handle_wrong_datapoint(data):

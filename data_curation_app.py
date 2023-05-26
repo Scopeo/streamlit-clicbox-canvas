@@ -1,45 +1,44 @@
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas
 import os
-import argparse
-import json
-from utils import get_image_file_name, read_document, resize_image, scale_bounding_box, save_current_state, handle_wrong_datapoint, handle_missing_datapoint, handle_user_choice
-import shutil
-
-parser = argparse.ArgumentParser()
-parser.add_argument("-i", "--input", dest="input", help="path of the input JSON file", required=True)
-parser.add_argument("-im", "--image", dest="image", help="path of invoice files", required=True)
-parser.add_argument("-o", "--output", dest="output", help="path of output files", required=True)
-args = parser.parse_args()
-OCR_results_path = args.input
-images_path = args.image
-output_path = args.output
+from utils import resize_image, scale_bounding_box, handle_wrong_datapoint, handle_missing_datapoint, handle_user_choice
+import hosting_config
 
 
 def next_page():
     if len(st.session_state["OCR_output_files"]) > 0:
         current_file = st.session_state["OCR_output_files"].pop(0)
         st.session_state["curation_output_files"].append(current_file)
-        shutil.move(os.path.join(st.session_state["label_folder_path"], current_file), os.path.join(st.session_state["output_folder_path"], current_file))
+        hosting_config.file_manager.move_files(
+            input_path=st.session_state["label_folder_path"],
+            output_path=st.session_state["output_folder_path"],
+            file_name=current_file
+        )
         st.session_state["previous_clicked"] = False
-
     st.experimental_rerun()
 
 
 def previous_page():
     current_file = st.session_state["curation_output_files"].pop()
     st.session_state["OCR_output_files"].insert(0, current_file)
-    shutil.move(os.path.join(st.session_state["output_folder_path"], current_file), os.path.join(st.session_state["label_folder_path"], current_file))
+    hosting_config.file_manager.move_files(
+        input_path=st.session_state["output_folder_path"],
+        output_path=st.session_state["label_folder_path"],
+        file_name=current_file
+    )
     st.session_state["previous_clicked"] = True
-
     st.experimental_rerun()
 
+@st.cache_data()
+def handle_image_and_bounding_box(OCR_results_file, bounding_boxes):
+    image_file_name = hosting_config.file_manager.get_image_file_name(OCR_results_file)
 
 def handle_image_and_bounding_box(OCR_results_file, images_path, bounding_boxes):
-    image_file_name = get_image_file_name(OCR_results_file, images_path)
+    image_file_name = get_image_file_name(OCR_results_file.split("/")[-1], images_path, bucket, client)
     if image_file_name is None:
         next_page()
-    image = read_document(image_file_name, images_path)
+    images = hosting_config.file_manager.read_document(image_file_name)
+    image = read_document(bucket, images_path+image_file_name, client)
     image, width_scale, height_scale = resize_image(image, 800, 800)
 
     bounding_boxes = scale_bounding_box(bounding_boxes, width_scale, height_scale)
@@ -61,7 +60,7 @@ if "previous_clicked" not in st.session_state:
     st.session_state["previous_clicked"] = False
 
 if "output_folder_path" not in st.session_state:
-    st.session_state["output_folder_path"] = output_path
+    st.session_state["output_folder_path"] = hosting_config.CONFIG["output_path"]
 
 if "curation_output_files" not in st.session_state:
     st.session_state["curation_output_files"] = list()
@@ -70,23 +69,24 @@ if "refresh_counter" not in st.session_state:
     st.session_state["refresh_counter"] = 0
 
 if not st.session_state["initialized"]:
+if "initialized" not in st.session_state or not st.session_state["initialized"]:
     st.markdown(
         "<h1 style='text-align: center;'>Let's start</h1>",
         unsafe_allow_html=True
     )
 
-    labels = os.listdir(OCR_results_path)
+    labels = hosting_config.file_manager.get_label_folder()
     label = st.selectbox("Select the Label:", labels)
     if st.session_state["selected_label"] != label:
         st.session_state["selected_label"] = label
-        st.session_state["label_folder_path"] = os.path.join(OCR_results_path, label)
-        list_files = [file for file in os.listdir(os.path.join(OCR_results_path, label)) if file.endswith(".json")]
+        st.session_state["label_folder_path"] = os.path.join(hosting_config.CONFIG["OCR_results_path"], label)
+        list_files = [file for file in hosting_config.file_manager.list_files_in_folder(st.session_state["label_folder_path"]) if file.endswith(".json")]
         list_files.sort()
         st.session_state["OCR_output_files"] = list_files
-        st.session_state["output_folder_path"] = os.path.join(output_path, label)
-        os.makedirs(st.session_state["output_folder_path"], exist_ok=True)
-        st.session_state["curation_output_files"] = [file for file in os.listdir(st.session_state["output_folder_path"])
-                                                     if file.endswith(".json")]
+        st.session_state["output_folder_path"] = os.path.join(hosting_config.CONFIG['output_path'], label)
+        hosting_config.file_manager.create_folder(st.session_state["output_folder_path"])
+        st.session_state["curation_output_files"] = [file for file in hosting_config.file_manager.list_files_in_folder(st.session_state["output_folder_path"]) if file.endswith(".json")]
+
     col3, col4 = st.columns([8, 1])
     if col4.button("Next"):
         st.session_state["initialized"] = True
@@ -97,14 +97,13 @@ elif len(st.session_state["OCR_output_files"]) == 0:
 
 elif "label_folder_path" in st.session_state:
     current_file = st.session_state["OCR_output_files"][0]
-    with open(os.path.join(st.session_state["label_folder_path"], current_file), "r") as file:
-        bounding_boxes = json.load(file)
+    bounding_boxes = hosting_config.file_manager.read_file(os.path.join(st.session_state["label_folder_path"], current_file))
     if len(bounding_boxes["objects"]) > 0 and bounding_boxes["user_reviewed"] == 1 \
             and not st.session_state["previous_clicked"]:
         next_page()
 
     st.set_page_config(layout="wide")
-
+    # show sidebar
     # add default width for sidebar
     st.markdown('''
             <style>
@@ -169,27 +168,15 @@ elif "label_folder_path" in st.session_state:
     if col1.button("Refresh image"):
         st.session_state["refresh_counter"] += 1
 
-    canvas_result = st_canvas(
-        background_image=image,
-        display_toolbar=False,
-        update_streamlit=True,
-        height=image.size[1],
-        width=image.size[0],
-        drawing_mode="transform",
-        key=f"{image_file_name}_{st.session_state['refresh_counter']}",
-        initial_drawing=bounding_boxes,
-    )
-    st.write(image_file_name)
-
     add_sidebar_empty_space(5)
     col3, col4 = st.sidebar.columns([2, 5])
 
     if col4.button("Wrong data point"):
-        save_current_state(current_file, handle_wrong_datapoint(bounding_boxes), st.session_state["label_folder_path"])
+        hosting_config.file_manager.save_current_state(current_file, handle_wrong_datapoint(bounding_boxes), st.session_state["label_folder_path"])
         next_page()
 
     if col4.button("Missing information"):
-        save_current_state(current_file, handle_missing_datapoint(bounding_boxes), st.session_state["label_folder_path"])
+        hosting_config.file_manager.save_current_state(current_file, handle_missing_datapoint(bounding_boxes), st.session_state["label_folder_path"])
         next_page()
 
     add_sidebar_empty_space(5)
@@ -200,8 +187,21 @@ elif "label_folder_path" in st.session_state:
     if col6.button("Next"):
         next_page()
 
+    #show image part
+    canvas_result = st_canvas(
+        background_image=image,
+        display_toolbar=False,
+        update_streamlit=True,
+        height=image.size[1],
+        width=image.size[0],
+        drawing_mode="transform",
+        key=f"{image_file_name}_{st.session_state['refresh_counter']}",
+        initial_drawing=bounding_boxes,
+    )
+                hosting_config.file_manager.save_current_state(current_file, bounding_boxes, st.session_state["label_folder_path"])
+    st.write(image_file_name)
     if canvas_result.json_data is not None:
         any_dark_green_box, bounding_boxes = handle_user_choice(bounding_boxes, canvas_result.json_data["objects"])
         if any_dark_green_box:
-            save_current_state(current_file, bounding_boxes, st.session_state["label_folder_path"])
+            save_current_state(current_file, bounding_boxes, bucket, client)
             next_page()
