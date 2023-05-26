@@ -6,6 +6,7 @@ import boto3
 import io
 from pdf2image import convert_from_bytes, convert_from_path
 import shutil
+import datetime
 
 
 class FileManagement(ABC):
@@ -17,8 +18,10 @@ class FileManagement(ABC):
         pass
 
     @abstractmethod
-    def move_files(self, source_key, destination_key):
-        pass
+    def move_files(self, input_path, output_path, file_name):
+        source_path = os.path.join(input_path, file_name)
+        destination_path = os.path.join(output_path, file_name)
+        return source_path, destination_path
 
     @abstractmethod
     def get_label_folder(self):
@@ -38,11 +41,23 @@ class FileManagement(ABC):
 
     @abstractmethod
     def read_document(self, file_path):
-        pass
+        file_extension = os.path.splitext(file_path)[-1].lower()
+        return file_extension
 
     @abstractmethod
-    def save_current_state(self, file_name, bounding_boxes, label_folder_path):
-        pass
+    def save_current_state(self, file_name, bounding_boxes, label_folder_path, user_name):
+        file_name["user_reviewed"] = bounding_boxes.get("user_reviewed", 0)
+        file_name["missing_information"] = bounding_boxes.get("missing_information", False)
+        file_name["wrong_datapoint"] = bounding_boxes.get("wrong_datapoint", False)
+        file_name["reviewer"] = bounding_boxes.get("reviewer", user_name)
+        file_name["review_datetime"] = bounding_boxes.get("review_datetime", datetime.datetime.now().isoformat())
+
+        for idx, _ in enumerate(file_name["objects"]):
+            file_name["objects"][idx]["result"] = bounding_boxes["objects"][idx].get("result", True)
+            file_name["objects"][idx]["group_id"] = bounding_boxes["objects"][idx].get("group_id", bounding_boxes["objects"][idx]["index"])
+            file_name["objects"][idx]["fill"] = bounding_boxes["objects"][idx].get("fill", bounding_boxes["objects"][idx]["fill"])
+            file_name["objects"][idx]["stroke"] = bounding_boxes["objects"][idx].get("stroke", bounding_boxes["objects"][idx]["stroke"])
+        return file_name
 
 
 class AWSFileManagement(FileManagement):
@@ -54,24 +69,24 @@ class AWSFileManagement(FileManagement):
         self.images_path = images_path
         self.output_path = output_path
 
-    def move_files(self, source_key, destination_key):
-        print(f"Moving file from {source_key} to {destination_key}")
-        self.s3.copy_object(Bucket=self.aws_bucket_name, CopySource={'Bucket': self.aws_bucket_name, 'Key': source_key}, Key=destination_key)
-        self.s3.delete_object(Bucket=self.aws_bucket_name, Key=source_key)
+    def move_files(self, input_path, output_path, file_name):
+        source_path, destination_path = super().move_files(input_path, output_path, file_name)
+        self.s3.copy_object(Bucket=self.aws_bucket_name, CopySource={'Bucket': self.aws_bucket_name, 'Key': source_path}, Key=destination_path)
+        self.s3.delete_object(Bucket=self.aws_bucket_name, Key=source_path)
 
     def get_image_file_name(self, json_file_name):
         s3 = boto3.resource('s3')
         bucket_resource = s3.Bucket(self.aws_bucket_name)
         for obj in bucket_resource.objects.filter(Prefix=self.images_path):
             image_file_name = os.path.basename(obj.key)
-            if image_file_name.split(".")[0] == json_file_name[2:-5]:
+            if os.path.splitext(image_file_name)[0] == json_file_name[:-5]:
                 return image_file_name
 
     def get_label_folder(self):
         result = self.s3.list_objects(Bucket=self.aws_bucket_name, Prefix=self.OCR_results_path, Delimiter='/')
         list_folders = []
         for o in result.get('CommonPrefixes'):
-            list_folders.append(os.path.basename(o.get('Prefix').strip('/')))
+            list_folders.append(os.path.basename(o.get('Prefix')[:-1]))
         return list_folders
 
     def list_files_in_folder(self, folder_prefix):
@@ -100,7 +115,7 @@ class AWSFileManagement(FileManagement):
     def read_document(self, file_key):
         obj = self.s3.get_object(Bucket=self.aws_bucket_name, Key=os.path.join(self.images_path, file_key))
         file_data = obj['Body'].read()
-        file_extension = os.path.splitext(file_key)[-1].lower()
+        file_extension = super().read_document(file_key)
 
         if file_extension in ['.jpg', '.jpeg', '.png', '.heic', '.bmp', '.gif', '.tiff', '.tif', '.webp', '.heif']:
             image = Image.open(io.BytesIO(file_data))
@@ -111,18 +126,10 @@ class AWSFileManagement(FileManagement):
 
         return image
 
-    def save_current_state(self, file_name, bounding_boxes, label_folder_path):
+    def save_current_state(self, file_name, bounding_boxes, label_folder_path, user_name):
         obj = self.s3.get_object(Bucket=self.aws_bucket_name, Key=os.path.join(label_folder_path, file_name))
         saved_data = json.loads(obj['Body'].read().decode('utf-8'))
-
-        saved_data["user_reviewed"] = bounding_boxes.get("user_reviewed", 0)
-        saved_data["missing_information"] = bounding_boxes.get("missing_information", False)
-        saved_data["wrong_datapoint"] = bounding_boxes.get("wrong_datapoint", False)
-
-        for idx, _ in enumerate(saved_data["objects"]):
-            saved_data["objects"][idx]["result"] = bounding_boxes["objects"][idx].get("result", True)
-            saved_data["objects"][idx]["first"] = bounding_boxes["objects"][idx].get("first", True)
-            saved_data["objects"][idx]["last"] = bounding_boxes["objects"][idx].get("last", True)
+        saved_data = super().save_current_state(saved_data, bounding_boxes, label_folder_path, user_name)
 
         self.s3.put_object(Bucket=self.aws_bucket_name, Key=os.path.join(label_folder_path, file_name), Body=json.dumps(saved_data, indent=2).encode('utf-8'))
 
@@ -134,8 +141,9 @@ class LocalFileManagement(FileManagement):
         self.images_path = images_path
         self.output_path = output_path
 
-    def move_files(self, source_key, destination_key):
-        shutil.move(source_key, destination_key)
+    def move_files(self, input_path, output_path, file_name):
+        source_path, destination_path = super().move_files(input_path, output_path, file_name)
+        return shutil.move(source_path, destination_path)
 
     def get_image_file_name(self, json_file_name):
         for image_file_name in os.listdir(self.images_path):
@@ -157,7 +165,7 @@ class LocalFileManagement(FileManagement):
         return bounding_boxes
 
     def read_document(self, file_name):
-        file_extension = os.path.splitext(file_name)[-1].lower()
+        file_extension = super().read_document(file_name)
         if file_extension in ['.jpg', '.jpeg', '.png', '.heic', '.bmp', '.gif', '.tiff', '.tif', '.webp', '.heif']:
             image = Image.open(os.path.join(self.images_path, file_name))
         elif file_extension == '.pdf':
@@ -166,19 +174,10 @@ class LocalFileManagement(FileManagement):
             raise ValueError(f"Unsupported file format: {file_extension}")
         return image
 
-    def save_current_state(self, file_name, bounding_boxes, label_folder_path):
+    def save_current_state(self, file_name, bounding_boxes, label_folder_path, user_name):
 
         with open(os.path.join(label_folder_path, file_name), "r") as json_file:
-            saved_data = json.load(json_file)
-            saved_data["user_reviewed"] = bounding_boxes.get("user_reviewed", 0)
-            saved_data["missing_information"] = bounding_boxes.get("missing_information", False)
-            saved_data["wrong_datapoint"] = bounding_boxes.get("wrong_datapoint", False)
-
-        for idx, _ in enumerate(saved_data["objects"]):
-            saved_data["objects"][idx]["result"] = bounding_boxes["objects"][idx].get("result", True)
-            saved_data["objects"][idx]["first"] = bounding_boxes["objects"][idx].get("first", True)
-            saved_data["objects"][idx]["last"] = bounding_boxes["objects"][idx].get("last", True)
+            saved_data = super().save_current_state(json.load(json_file), bounding_boxes, label_folder_path, user_name)
 
         with open(os.path.join(label_folder_path, file_name), "w") as json_file:
             json.dump(saved_data, json_file, indent=2)
-

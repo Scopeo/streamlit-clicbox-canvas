@@ -9,8 +9,11 @@ def next_page():
     if len(st.session_state["OCR_output_files"]) > 0:
         current_file = st.session_state["OCR_output_files"].pop(0)
         st.session_state["curation_output_files"].append(current_file)
-        hosting_config.file_manager.move_files(source_key=os.path.join(st.session_state["label_folder_path"], current_file),
-                                               destination_key=os.path.join(st.session_state["output_folder_path"], current_file))
+        hosting_config.file_manager.move_files(
+            input_path=st.session_state["label_folder_path"],
+            output_path=st.session_state["output_folder_path"],
+            file_name=current_file
+        )
         st.session_state["previous_clicked"] = False
     st.experimental_rerun()
 
@@ -18,8 +21,11 @@ def next_page():
 def previous_page():
     current_file = st.session_state["curation_output_files"].pop()
     st.session_state["OCR_output_files"].insert(0, current_file)
-    hosting_config.file_manager.move_files(source_key=os.path.join(st.session_state["output_folder_path"], current_file),
-                                           destination_key=os.path.join(st.session_state["label_folder_path"], current_file))
+    hosting_config.file_manager.move_files(
+        input_path=st.session_state["output_folder_path"],
+        output_path=st.session_state["label_folder_path"],
+        file_name=current_file
+    )
     st.session_state["previous_clicked"] = True
     st.experimental_rerun()
 
