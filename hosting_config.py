@@ -1,11 +1,11 @@
 from file_management import AWSFileManagement, LocalFileManagement
 
-HOSTING_MODE = "AWS"
+HOSTING_MODE = "Local"
 if HOSTING_MODE == "AWS":
     CONFIG = {
-        "OCR_results_path": "sample_predicted_data_to_curate/",
-        "images_path": "2240_invoices_supplier/",
-        "output_path": "new_results/",
+        "OCR_results_path": "1000_json_resume_curate/",
+        "images_path": "1000_CV/",
+        "output_path": "1000_resume_results/",
         "bucket": 'data-curation-application'
     }
     file_manager = AWSFileManagement(
@@ -16,9 +16,9 @@ if HOSTING_MODE == "AWS":
     )
 elif HOSTING_MODE == "Local":
     CONFIG = {
-        "OCR_results_path": "CV_data/json_resume_to_curate",
-        "images_path": "CV_data/CV",
-        "output_path": "CV_data/results"
+        "OCR_results_path": "CV_data/1000_CV_json_to_curate_check",
+        "images_path": "CV_data/1000_CV",
+        "output_path": "CV_data/1000_resume_results_check"
     }
     file_manager = LocalFileManagement(
         CONFIG["OCR_results_path"],
